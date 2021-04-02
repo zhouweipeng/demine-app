@@ -1,0 +1,71 @@
+<template>
+	<div class="bottom-bar" elevation="15" :style="bottomBarStyles">
+		<text
+			class="btn bottom-bar-btn"
+			:style="bottomBarTextStyles"
+			@tap="$refs.tipPopup.show(true)"
+			@longpress="$refs.levelPopup.show(true)"
+		>重置</text>
+		<text class="btn bottom-bar-btn" :style="bottomBarTextStyles" @tap="goSetting">设置</text>
+		<tip-popup
+			ref="tipPopup"
+			title="确定要重新开始吗?"
+			left-text="确定"
+			right-text="取消"
+			@leftClick="reset"
+			@rightClick="$refs.tipPopup.show(false)"
+		/>
+		<level-popup ref="levelPopup" :curr-level="currLevel" />
+	</div>
+</template>
+
+<script>
+import levelPopup from './level-popup'
+
+export default {
+	components: {
+		levelPopup
+	},
+
+	computed: {
+		bottomBarStyles() {
+			const { value, defaultValue } = this.$parent.theme.bottomBarBgColor
+			return {
+				height: 60,
+				backgroundColor: value || defaultValue
+			}
+		},
+		bottomBarTextStyles() {
+			const { value, defaultValue } = this.$parent.theme.bottomBarColor
+			return { color: value || defaultValue }
+		},
+		currLevel() {
+			return this.$parent.options.row / 10
+		}
+	},
+
+	methods: {
+		reset() {
+			uni.$emit('reset')
+			this.$refs.tipPopup.show(false)
+		},
+		goSetting() {
+			uni.navigateTo({
+				url: '/pages/setting/setting'
+			})
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.bottom-bar {
+	flex-direction: row;
+	justify-content: space-between;
+	.bottom-bar-btn {
+		padding: 0 30rpx;
+		line-height: 60px;
+		font-size: 18px;
+	}
+}
+</style>

@@ -1,0 +1,189 @@
+<template>
+	<base-popup ref="popup">
+		<div class="over-wrapper">
+			<div class="title flex-row">
+				<text v-for="char in isWin ? '闯关成功' : '游戏结束'" :key="char" ref="title" class="title">{{ char }}</text>
+			</div>
+			<div v-if="duration !== undefined" class="duration-wrapper">
+				<text ref="time" class="duration">{{ duration | dateToTime }}</text>
+				<text ref="tip" class="tip">新纪录</text>
+			</div>
+			<text v-if="isWin" ref="next" class="btn" @tap="$emit('nextLevel')">下一关</text>
+			<text ref="restart" class="btn" @tap="reStart">重新开始</text>
+			<text ref="close" class="btn" @tap="show({ show: false })">关闭</text>
+		</div>
+	</base-popup>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+import { dateToTime } from '@/utils/tool'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	mixins: [animate],
+	
+	data() {
+		return {
+			isWin: false,
+			duration: 0
+		}
+	},
+
+	filters: {
+		dateToTime
+	},
+
+	methods: {
+		show({ show, result, time }) {
+			if (show) {
+				this.isWin = result
+				this.duration = time
+			}
+			this.$refs.popup.show(show)
+			if (!show) return
+			this.unbindAnimate()
+			this.$nextTick(() => {
+				const over_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>1000',
+						props: [
+							...this.$refs.title
+								.map((nodeRef, i) => {
+									const delay = 50 * (i + 1)
+									const duration = 1000 - delay
+									return [
+										{
+											element: nodeRef.ref,
+											property: 'transform.scale',
+											expression: `easeOutElastic(t-${delay},1.2,-0.2,${duration})`
+										},
+										{
+											element: nodeRef.ref,
+											property: 'transform.translateY',
+											expression: `easeOutElastic(t-${delay},20,-20,${duration})`
+										},
+										{
+											element: nodeRef.ref,
+											property: 'opacity',
+											expression: `easeOutExpo(t-${delay},0,1,${duration})`
+										}
+									]
+								})
+								.flat(),
+							...(this.isWin ? [
+								{
+									element: this.$refs.time.ref,
+									property: 'transform.translateY',
+									expression: 'easeOutElastic(t-50,50,-50,950)'
+								},
+								{
+									element: this.$refs.time.ref,
+									property: 'opacity',
+									expression: 'easeOutExpo(t-50,0,1,950)'
+								},
+								{
+									element: this.$refs.tip.ref,
+									property: 'transform.scale',
+									expression: 'easeOutElastic(t-500,1,0.2,500)',
+									config: {
+										transformOrigin: 'right center'
+									}
+								},
+								{
+									element: this.$refs.tip.ref,
+									property: 'opacity',
+									expression: 'easeOutExpo(t-500,0,1,500)'
+								}
+							] : []),
+							...(this.isWin ? ['next'] : []).concat('restart', 'close').map((refName, i) => [
+								{
+									element: this.$refs[refName].ref,
+									property: 'transform.translateY',
+									expression: `easeOutElastic(t-100+${50*i},50,-50,900-${50*i})`
+								},
+								{
+									element: this.$refs[refName].ref,
+									property: 'opacity',
+									expression: `easeOutExpo(t-100+${50*i},0,1,900-${50*i})`
+								}
+							]).flat()
+							// {
+							// 	element: this.$refs.next.ref,
+							// 	property: 'transform.translateY',
+							// 	expression: 'easeOutElastic(t-100,50,-50,900)'
+							// },
+							// {
+							// 	element: this.$refs.next.ref,
+							// 	property: 'opacity',
+							// 	expression: 'easeOutExpo(t-100,0,1,900)'
+							// },
+							// {
+							// 	element: this.$refs.restart.ref,
+							// 	property: 'transform.translateY',
+							// 	expression: 'easeOutElastic(t-150,50,-50,850)'
+							// },
+							// {
+							// 	element: this.$refs.restart.ref,
+							// 	property: 'opacity',
+							// 	expression: 'easeOutExpo(t-150,0,1,850)'
+							// },
+							// {
+							// 	element: this.$refs.close.ref,
+							// 	property: 'transform.translateY',
+							// 	expression: 'easeOutElastic(t-200,50,-50,800)'
+							// },
+							// {
+							// 	element: this.$refs.close.ref,
+							// 	property: 'opacity',
+							// 	expression: 'easeOutExpo(t-200,0,1,800)'
+							// }
+						]
+					},
+					res => {
+						if (res.state == 'exit') this.unbindAnimate()
+					}
+				)
+				this.bindingxToken = over_bindingx.token
+			})
+		},
+		reStart() {
+			uni.$emit('reset')
+			this.show({ show: false })
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.over-wrapper {
+	border-radius: 5px;
+	background-color: #fff;
+	padding: 30rpx;
+	.title {
+		font-size: 72px;
+	}
+	.duration-wrapper {
+		position: relative;
+		padding: 10px 0;
+		.duration {
+			font-size: 32px;
+			text-align: center;
+		}
+		.tip {
+			position: absolute;
+			top: 0;
+			right: 0;
+			font-size: 12px;
+			color: #fd1a36;
+			padding: 10px;
+		}
+	}
+	.btn {
+		font-size: 18px;
+		text-align: center;
+		padding: 10px;
+	}
+}
+</style>

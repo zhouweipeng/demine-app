@@ -1,0 +1,107 @@
+<template>
+	<base-popup ref="popup" mask-click>
+		<list :show-scrollbar="false" class="level-wrapper">
+			<cell
+				v-for="(item, index) in levelList"
+				:key="index"
+				ref="level"
+				:class="['level-item', { 'level-item-init': index < 5 }]"
+				@tap="changeLevelFn(index + 1)"
+			>
+				<text class="content">level {{ index + 1 }}：{{ item.col }}*{{ item.row }}*{{ item.mine }}</text>
+				<iconfont v-if="item.row / 10 == currLevel" type="selected" class="content" />
+			</cell>
+		</list>
+	</base-popup>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+import { deepClone } from '@/utils/tool'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	props: {
+		currLevel: Number
+	},
+
+	mixins: [animate],
+
+	computed: {
+		levelList() {
+			return new Array(this.$store.state.level).fill().map((...[, i]) => ({
+				col: 10,
+				row: (i + 1) * 10,
+				mine: (i + 1) * 10
+			}))
+		}
+	},
+
+	methods: {
+		show(flag) {
+			this.$refs.popup.show(flag)
+			if (!flag) return
+			uni.vibrateShort()
+			this.unbindAnimate()
+			this.$nextTick(() => {
+				const level_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>500',
+						props: this.$refs.level
+							.slice(0, 5)
+							.map((nodeRef, i) => {
+								const delay = 50 * (i + 1)
+								const duration = 500 - delay
+								return [
+									{
+										element: nodeRef.ref,
+										property: 'transform.translateX',
+										expression: `easeOutExpo(t-${delay},50,-50,${duration})`
+									},
+									{
+										element: nodeRef.ref,
+										property: 'opacity',
+										expression: `easeOutExpo(t-${delay},0,1,${duration})`
+									}
+								]
+							})
+							.flat()
+					},
+					res => {
+						if (res.state == 'exit') this.unbindAnimate()
+					}
+				)
+				this.bindingxToken = level_bindingx.token
+			})
+		},
+		changeLevelFn(options) {
+			this.$refs.popup.show(false)
+			uni.$emit('reset', deepClone(options))
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.level-wrapper {
+	width: 600rpx;
+	height: 250px;
+	border-radius: 5px;
+	background-color: #fff;
+	.level-item {
+		padding: 0 30rpx;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		height: 50px;
+		&.level-item-init {
+			transform: translateX(50px);
+			opacity: 0;
+		}
+		.content {
+			font-size: 16px;
+		}
+	}
+}
+</style>

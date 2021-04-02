@@ -1,0 +1,83 @@
+<template>
+	<base-popup ref="popup" mask-click>
+		<div class="popop-wrapper">
+			<text ref="tip" class="tip-title">{{ title }}</text>
+			<div class="btn-group">
+				<text ref="confirm" class="btn" @tap="$emit('leftClick')">{{ leftText }}</text>
+				<text ref="cancel" class="btn" @tap="$emit('rightClick')">{{ rightText }}</text>
+			</div>
+		</div>
+	</base-popup>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	name: 'tip-popup',
+	
+	mixins: [animate],
+	
+	props: {
+		title: String,
+		leftText: String,
+		rightText: String
+	},
+	
+	methods: {
+		show(flag) {
+			this.$refs.popup.show(flag)
+			if (!flag) return
+			this.unbindAnimate()
+			this.$nextTick(() => {
+				const content_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>500',
+						props: ['tip', 'confirm', 'cancel']
+							.map((refName, i) => {
+								const delay = 50 * (i + 1)
+								const duration = 500 - delay
+								return [
+									{
+										element: this.$refs[refName].ref,
+										property: 'transform.translateY',
+										expression: `easeOutExpo(t-${delay},50,-50,${duration})`
+									},
+									{
+										element: this.$refs[refName].ref,
+										property: 'opacity',
+										expression: `easeOutExpo(t-${delay},0,1,${duration})`
+									}
+								]
+							})
+							.flat()
+					},
+					res => {
+						if (res.state == 'exit') this.unbindAnimate()
+					}
+				)
+				this.bindingxToken = content_bindingx.token
+			})
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.popop-wrapper {
+	width: 500rpx;
+	border-radius: 5px;
+	background-color: #fff;
+	.tip-title,
+	.btn {
+		padding: 30rpx;
+		font-size: 16px;
+	}
+	.btn-group {
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+}
+</style>

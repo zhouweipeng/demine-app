@@ -1,0 +1,262 @@
+<template>
+	<div :style="mainStyles">
+		<nav-bar ref="navbar" />
+		<list :show-scrollbar="false">
+			<cell class="placeholder" />
+			<cell v-for="(ITEM, INDEX) in options.row" :key="`line${INDEX}`" class="line-wrapper">
+				<div
+					v-for="(item, index) in gridList.slice(options.col * INDEX, options.col * (INDEX + 1))"
+					:key="`mine${item.index}`"
+					class="mine-item"
+					:style="{ backgroundColor: item.mineNum === undefined ? gridBgColor : gridActiveBgColor }"
+					@longpress="onLongPress(item.index)"
+					@tap="onTap(item.index)"
+				>
+					<iconfont v-if="isEnd && item.isMine" type="mine" :style="{ color: mineColor }" />
+					<template v-else-if="item.mineNum !== undefined">
+						<text class="mine-item-text" :style="mineNumColor(item.mineNum)">{{ item.mineNum ? item.mineNum : '' }}</text>
+					</template>
+					<iconfont v-else-if="item.isFlag" type="flag" :style="{ color: flagColor }" />
+				</div>
+			</cell>
+			<cell class="placeholder" />
+		</list>
+		<bottom-bar @reset="reset(false)" />
+		<!-- 游戏结束 -->
+		<over-popup ref="overPopup" @nextLevel="nextLevel(true)" />
+		<!-- 二十关之后渲染速度变慢提示（五十关的时候慢的出奇 -->
+		<tip-popup
+			ref="tipPopup"
+			title="二十关之后游戏渲染速度会逐渐变慢,确定继续吗?"
+			left-text="确定"
+			right-text="取消"
+			@leftClick="nextLevel(false)"
+			@rightClick="$refs.tipPopup.show(false)"
+		/>
+	</div>
+</template>
+
+<script>
+import { randomNum } from '@/utils/tool'
+import navBar from './nav-bar'
+import bottomBar from './bottom-bar'
+import overPopup from './over-popup'
+import { mapState } from 'vuex'
+
+export default {
+	components: {
+		navBar,
+		bottomBar,
+		overPopup
+	},
+
+	data() {
+		return {
+			options: {},
+			gridList: [],
+			mines: [],
+			isEnd: false
+		}
+	},
+
+	computed: {
+		...mapState(['theme']),
+		// 主体样式
+		mainStyles() {
+			const { windowWidth, windowHeight } = uni.getSystemInfoSync()
+			const { value, defaultValue } = this.theme.mainBgColor
+			return {
+				width: windowWidth,
+				height: windowHeight,
+				backgroundColor: value || defaultValue
+			}
+		},
+		// 方格默认颜色
+		gridBgColor() {
+			const { value, defaultValue } = this.theme.gridBgColor
+			return value || defaultValue
+		},
+		// 方格翻开的颜色
+		gridActiveBgColor() {
+			const { value, defaultValue } = this.theme.gridActiveBgColor
+			return value || defaultValue
+		},
+		// 地雷颜色
+		mineColor() {
+			const { value, defaultValue } = this.theme.mineColor
+			return value || defaultValue
+		},
+		// 旗子颜色
+		flagColor() {
+			const { value, defaultValue } = this.theme.flagColor
+			return value || defaultValue
+		},
+		// 插旗数量
+		flagNum() {
+			return this.gridList.filter(item => item.isFlag).length
+		},
+		// 未翻开的方格数
+		notOpenedNum() {
+			return this.gridList.filter(item => item.mineNum === undefined).length
+		}
+	},
+
+	methods: {
+		mineNumColor(num) {
+			const { value, defaultValue } = this.theme[`numberColor_${num}`] || {}
+			return { color: value || defaultValue }
+		},
+		/**
+		 * 方格长按事件
+		 * @param {Number} targetIndex 点击块下标
+		 */
+		onLongPress(targetIndex) {
+			if (this.isEnd) return
+			uni.vibrateShort()
+			this.$set(this.gridList[targetIndex], 'isFlag', !this.gridList[targetIndex].isFlag)
+		},
+		/**
+		 * 方格点击事件
+		 * @param {Number} targetIndex 点击块下标
+		 */
+		onTap(targetIndex) {
+			if (this.isEnd) return
+			if (!this.mines.length) this.createMines(targetIndex)
+			if (this.gridList[targetIndex].isFlag) return
+			if (this.mines.includes(targetIndex)) return this.endGame()
+			const aroundBlock = this.getAroundLocation(targetIndex)
+			if (this.gridList[targetIndex].mineNum !== undefined) {
+				const { mineNum } = this.gridList[targetIndex]
+				if (!mineNum) return
+				const flagNum = aroundBlock.filter(i => this.gridList[i].isFlag).length
+				if (mineNum == flagNum) aroundBlock.filter(i => !this.gridList[i].isFlag && this.gridList[i].mineNum === undefined).forEach(this.onTap)
+				return
+			}
+			const mineNum = this.mines.filter(i => aroundBlock.includes(i)).length
+			this.$set(this.gridList[targetIndex], 'mineNum', mineNum)
+			if (!mineNum) aroundBlock.forEach(this.onTap)
+		},
+		/**
+		 * 生成地雷
+		 * @param {Number} exclude 第一个点击的位置要排除掉
+		 */
+		createMines(exclude) {
+			const { row, col, mine } = this.options
+			const tempArr = []
+			const length = row * col
+			while (tempArr.length < mine) {
+				const location = randomNum(0, length)
+				if (tempArr.includes(location) || location == exclude) continue
+				tempArr.push(location)
+				this.gridList[location].isMine = true
+			}
+			this.mines = tempArr
+			uni.$emit('setTimer')
+		},
+		/**
+		 * 获取该位置周围八个的下标
+		 * @param {Number} index
+		 */
+		getAroundLocation(index) {
+			const { row, col } = this.options
+			let tempArr = [index - col - 1, index - col, index - col + 1, index - 1, index + 1, index + col - 1, index + col, index + col + 1]
+			tempArr = tempArr.filter(i => i >= 0 && i < row * col)
+			if (!(index % col)) tempArr = tempArr.filter(i => (i + 1) % col)
+			if (!((index + 1) % col)) tempArr = tempArr.filter(i => i % col)
+			return tempArr
+		},
+		/**
+		 * 重置
+		 */
+		reset(level) {
+			if (level) {
+				const tempNum = level * 10
+				this.options = {
+					col: 10,
+					row: tempNum,
+					mine: tempNum
+				}
+			}
+			this.isEnd = false
+			this.mines = []
+			const { row, col } = this.options
+			this.gridList = new Array(row * col).fill().map((_, index) => ({ index }))
+		},
+		/**
+		 * 游戏结束
+		 */
+		endGame() {
+			uni.vibrateLong()
+			this.isEnd = true
+			uni.$emit('clearTimer')
+			this.$refs.overPopup.show({
+				show: true,
+				result: false
+			})
+		},
+		/**
+		 * 下一关卡等级
+		 * @param {Boolean} isAsk
+		 */
+		nextLevel(isAsk) {
+			let { level } = this.$store.state
+			if (level >= 20 && isAsk) return this.$refs.tipPopup.show(true)
+			this.$store.commit('updateLevel', ++level)
+			this.reset(level)
+			if (level >= 20) this.$refs.overPopup.show({ show: false })
+			if (!isAsk) this.$refs.tipPopup.show(false)
+		}
+	},
+
+	watch: {
+		notOpenedNum(newValue) {
+			if (newValue == this.options.mine) {
+				const { overPopup, navbar } = this.$refs
+				this.isEnd = true
+				overPopup.show({
+					show: true,
+					result: true,
+					time: navbar.endTimer()
+				})
+			}
+		}
+	},
+
+	onLoad() {
+		const { reset } = this
+		reset(this.$store.state.level)
+		uni.$on('reset', reset)
+	},
+
+	onUnload() {
+		uni.$off('reset')
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.placeholder {
+	height: 6rpx;
+}
+.line-wrapper {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	& + .line-wrapper {
+		padding-top: 6rpx;
+	}
+	.mine-item {
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 3px;
+		.mine-item-text,
+		.iconfont {
+			width: 72rpx;
+			height: 72rpx;
+			line-height: 72rpx;
+			text-align: center;
+			font-size: 18px;
+		}
+	}
+}
+</style>

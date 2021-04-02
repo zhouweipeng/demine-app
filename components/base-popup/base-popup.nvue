@@ -1,0 +1,84 @@
+<template>
+	<div v-if="isShow" ref="popup" class="mask" @tap="onMaskClick">
+		<div ref="content" elevation="5" @tap="clear"><slot /></div>
+	</div>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	name: 'base-popup',
+	
+	mixins: [animate],
+	
+	props: {
+		maskClick: {
+			type: Boolean,
+			default: false
+		}
+	},
+
+	data() {
+		return {
+			isShow: false
+		}
+	},
+
+	methods: {
+		clear(e) {
+			e.stopPropagation()
+		},
+		onMaskClick(e) {
+			this.clear(e)
+			if (this.maskClick) this.show(false)
+		},
+		show(flag) {
+			if (flag) this.isShow = true
+			else this.$emit('close')
+			this.unbindAnimate()
+			this.$nextTick(() => {
+				const popup_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>500',
+						props: [
+							{
+								element: this.$refs.popup.ref,
+								property: 'opacity',
+								expression: flag ? 'easeOutExpo(t,0,1,500)' : 'easeOutExpo(t,1,-1,500)'
+							},
+							{
+								element: this.$refs.content.ref,
+								property: 'transform.translateY',
+								expression: flag ? 'easeOutExpo(t,50,-50,500)' : 'easeOutExpo(t,0,-50,500)'
+							}
+						]
+					},
+					res => {
+						if (res.state != 'exit') return
+						this.unbindAnimate()
+						if (!flag) this.isShow = false
+					}
+				)
+				this.bindingxToken = popup_bindingx.token
+			})
+		}
+	}
+}
+</script>
+
+<style scoped>
+.mask {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background-color: rgba(0, 0, 0, 0.4);
+	justify-content: center;
+	align-items: center;
+	opacity: 0;
+}
+</style>

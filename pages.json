@@ -1,0 +1,19 @@
+{
+	"pages": [{
+		"path": "pages/index/index"
+	}, {
+		"path": "pages/main/main"
+	}, {
+		"path": "pages/record/record"
+	}, {
+		"path": "pages/setting/setting"
+	}, {
+		"path": "pages/about/about"
+	}],
+	"globalStyle": {
+		"navigationStyle": "custom",
+		"app-plus": {
+			"bounce": "none"
+		}
+	}
+}

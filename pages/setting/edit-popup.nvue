@@ -1,0 +1,150 @@
+<template>
+	<base-popup ref="popup" mask-click @close="closeKeyboard">
+		<div class="popop-wrapper">
+			<input ref="input" v-model="currColor" :maxlength="7" class="input-review" :style="inputStyles" />
+			<div v-for="key in Object.keys(color)" :key="key" ref="slider">
+				<slider
+					:value="color[key]"
+					:max="255"
+					:block-size="20"
+					:active-color="key"
+					show-value
+					class="slider-bar"
+					@changing="onChanging(key, $event.detail.value)"
+					@change="updateInput"
+				/>
+			</div>
+			<div class="btn-group">
+				<text ref="confirm" class="btn" @tap="confirmFn">确定</text>
+				<text ref="cancel" class="btn" @tap="show(false)">取消</text>
+			</div>
+		</div>
+	</base-popup>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+import { hexToRgb, rgbToHex } from '@/utils/tool'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	mixins: [animate],
+	
+	data() {
+		return {
+			color: {
+				'#f00': 0,
+				'#0f0': 0,
+				'#00f': 0
+			},
+			currColor: ''
+		}
+	},
+
+	computed: {
+		inputStyles({ color }) {
+			const yiq = (color['#f00'] * 299 + color['#0f0'] * 587 + color['#00f'] * 114) / 1000
+			return {
+				backgroundColor: `rgb(${color['#f00']}, ${color['#0f0']}, ${color['#00f']})`,
+				color: yiq >= 128 ? '#000' : '#fff'
+			}
+		}
+	},
+
+	methods: {
+		confirmFn() {
+			const { updateInput, currEditKey, currColor, show } = this
+			updateInput() // 防止用户清空输入框内容
+			this.$store.commit('saveTheme', {
+				key: currEditKey,
+				value: currColor
+			})
+			show(false)
+		},
+		closeKeyboard() {
+			uni.hideKeyboard()
+		},
+		updateInput() {
+			const { color } = this
+			this.currColor = rgbToHex(color['#f00'], color['#0f0'], color['#00f'])
+		},
+		show(flag, { key, value, defaultValue } = {}) {
+			if (flag) {
+				const { r, g, b } = hexToRgb(value || defaultValue)
+				this.color['#f00'] = r
+				this.color['#0f0'] = g
+				this.color['#00f'] = b
+				this.currColor = value || defaultValue
+				this.currEditKey = key
+			}
+			this.$refs.popup.show(flag)
+			if (!flag) return this.closeKeyboard()
+			this.unbindAnimate()
+			this.$nextTick(() => {
+				const { input, slider, confirm, cancel } = this.$refs
+				const content_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>500',
+						props: [input, ...slider, confirm, cancel]
+							.map((nodeRef, i) => {
+								const delay = 50 * (i + 1)
+								const duration = 500 - delay
+								return [
+									{
+										element: nodeRef.ref,
+										property: 'transform.translateY',
+										expression: `easeOutExpo(t-${delay},50,-50,${duration})`
+									},
+									{
+										element: nodeRef.ref,
+										property: 'opacity',
+										expression: `easeOutExpo(t-${delay},0,1,${duration})`
+									}
+								]
+							})
+							.flat()
+					},
+					res => {
+						if (res.state == 'exit') this.unbindAnimate()
+					}
+				)
+				this.bindingxToken = content_bindingx.token
+			})
+		},
+		onChanging(key, value) {
+			this.color[key] = value
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.popop-wrapper {
+	width: 500rpx;
+	border-radius: 5px;
+	background-color: #fff;
+	.slider-bar {
+		margin: 10rpx 30rpx;
+	}
+	.input-review {
+		margin: 30rpx;
+		height: 40px;
+		border-radius: 5px;
+		background-color: #f5f5f5;
+		overflow: hidden;
+		font-size: 16px;
+		padding: 0 20rpx;
+		text-align: center;
+		border: 1px solid #e0e0e0;
+	}
+	.btn-group {
+		flex-direction: row;
+		justify-content: flex-end;
+		.btn {
+			padding: 30rpx;
+			font-size: 16px;
+		}
+	}
+}
+</style>

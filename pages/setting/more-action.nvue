@@ -1,0 +1,102 @@
+<template>
+	<div v-if="isShow" ref="popup" class="mask flex-row">
+		<text ref="leftBtn" elevation="5" class="btn" @tap="clear($event), $emit('leftClick')">{{ leftText }}</text>
+		<text ref="rightBtn" elevation="5" class="btn" @tap="clear($event), $emit('rightClick')">{{ rightText }}</text>
+	</div>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	name: 'base-popup',
+	
+	props: {
+		show: {
+			type: Boolean,
+			required: true
+		},
+		leftText: String,
+		rightText: String
+	},
+	
+	mixins: [animate],
+
+	data() {
+		return {
+			isShow: false
+		}
+	},
+
+	methods: {
+		clear(e) {
+			e.stopPropagation()
+		},
+		showFn(flag) {
+			if (flag) this.isShow = true
+			this.unbindAnimate()
+			this.$nextTick(() => {
+				const popup_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>500',
+						props: [
+							{
+								element: this.$refs.popup.ref,
+								property: 'opacity',
+								expression: flag ? 'easeOutExpo(t,0,1,500)' : 'easeOutExpo(t,1,-1,500)'
+							},
+							{
+								element: this.$refs.leftBtn.ref,
+								property: 'transform.translateY',
+								expression: flag ? 'easeOutExpo(t-50,10,-10,450)' : 'easeOutExpo(t,0,-10,500)'
+							},
+							{
+								element: this.$refs.rightBtn.ref,
+								property: 'transform.translateY',
+								expression: flag ? 'easeOutExpo(t-100,10,-10,400)' : 'easeOutExpo(t,0,-10,500)'
+							}
+						]
+					},
+					res => {
+						if (res.state != 'exit') return
+						this.unbindAnimate()
+						if (!flag) this.isShow = false
+					}
+				)
+				this.bindingxToken = popup_bindingx.token
+			})
+		}
+	},
+	
+	watch: {
+		show(newValue) {
+			this.showFn(newValue)
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.mask {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	border-radius: 5px;
+	background-color: rgba(0, 0, 0, 0.4);
+	justify-content: center;
+	opacity: 0;
+	.btn {
+		font-size: 16px;
+		padding: 5px 10px;
+		border-radius: 3px;
+		background-color: #fff;
+		& + .btn {
+			margin-left: 30rpx;
+		}
+	}
+}
+</style>

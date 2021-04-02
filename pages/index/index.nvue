@@ -1,0 +1,195 @@
+<template>
+	<div v-if="isRender" class="page flex-col">
+		<div ref="block" class="main-block">
+			<div class="title-wrapper flex-row">
+				<text v-for="char in '扫雷'" :key="char" ref="title" class="title">{{ char }}</text>
+			</div>
+			<text
+				v-for="(item, index) in actions"
+				:key="item.label"
+				ref="action"
+				class="btn"
+				@tap="handleAction(item, index)"
+			>{{ item.label }}</text>
+		</div>
+	</div>
+</template>
+
+<script>
+import animate from '@/mixins/animate'
+const BindingX = uni.requireNativePlugin('bindingx')
+
+export default {
+	mixins: [animate],
+	
+	data() {
+		return {
+			isRender: false,
+			actions: Object.freeze([
+				{ label: '开始', type: 'route', url: 'main' },
+				{ label: '记录', type: 'route', url: 'record' },
+				{ label: '设置', type: 'route', url: 'setting' },
+				{ label: '退出', type: 'exit' }
+			])
+		}
+	},
+
+	methods: {
+		handleAction(action, i) {
+			switch (action.type) {
+				case 'route':
+					this.animationRouteFn(action.url, i)
+					break
+				case 'exit':
+					plus.runtime.quit()
+					break
+			}
+		},
+		animationRouteFn(url, i) {
+			if (this.menuToken || this.routeToken) return
+			const { block, title, action } = this.$refs
+			const route_bindingx = BindingX.bind(
+				{
+					eventType: 'timing',
+					exitExpression: 't>500',
+					props: [
+						{
+							element: action[i].ref,
+							property: 'transform.translateX',
+							expression: 'easeOutExpo(t,0,50,500)'
+						},
+						...title.concat(action).map(nodeRef => ({
+							element: nodeRef.ref,
+							property: 'opacity',
+							expression: 'easeOutExpo(t,1,-1,500)'
+						})),
+						{
+							element: block.ref,
+							property: 'transform.rotateY',
+							expression: 'easeOutExpo(t,-20,20,500)'
+						}
+					]
+				},
+				res => {
+					if (res.state != 'exit') return
+					this.unbindAnimate('routeToken')
+					uni.navigateTo({
+						url: `/pages/${url}/${url}`,
+						animationType: 'zoom-fade-out'
+					})
+				}
+			)
+			this.routeToken = route_bindingx.token
+		}
+	},
+
+	onShow() {
+		this.isRender = false
+		this.$nextTick()
+			.then(() => {
+				this.isRender = true
+				return this.$nextTick()
+			})
+			.then(() => {
+				const { block, title, action } = this.$refs
+				const menu_bindingx = BindingX.bind(
+					{
+						eventType: 'timing',
+						exitExpression: 't>2800',
+						props: [
+							{
+								element: block.ref,
+								property: 'transform.scale',
+								expression: 'easeOutExpo(t,3,-2,500)'
+							},
+							{
+								element: block.ref,
+								property: 'opacity',
+								expression: 'easeOutExpo(t,0,1,500)'
+							},
+							{
+								element: block.ref,
+								property: 'transform.rotateY',
+								expression: 't > 500 ? easeOutExpo(t-500,0,-20,500) : ""',
+								config: {
+									perspective: 500
+								}
+							},
+							...title
+								.map((nodeRef, i) => {
+									return [
+										{
+											element: nodeRef.ref,
+											property: 'transform.translateY',
+											expression: `easeOutExpo(t-1000-${100 * i},10,-10,500)`
+										},
+										{
+											element: nodeRef.ref,
+											property: 'opacity',
+											expression: `easeOutExpo(t-1000-${100 * i},0,1,500)`
+										}
+									]
+								})
+								.flat(),
+							...action
+								.map((nodeRef, i) => {
+									return [
+										{
+											element: nodeRef.ref,
+											property: 'transform.translateX',
+											expression: `easeOutExpo(t-1500-${100 * i},-50,50,500)`
+										},
+										{
+											element: nodeRef.ref,
+											property: 'opacity',
+											expression: `easeOutExpo(t-1500-${100 * i},0,1,500)`
+										}
+									]
+								})
+								.flat()
+						]
+					},
+					res => {
+						if (res.state != 'exit') return
+						this.unbindAnimate('menuToken')
+					}
+				)
+				this.menuToken = menu_bindingx.token
+			})
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.page {
+	justify-content: center;
+	background-color: #000;
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	.main-block {
+		padding: 30px;
+		background-color: #fff;
+		opacity: 0;
+		border-radius: 5px;
+		transform: scale(3, 3);
+		.title-wrapper {
+			margin-bottom: 10px;
+			.title {
+				font-size: 72px !important;
+				margin-bottom: 30px;
+				& + .title {
+					margin: 30px 0 0 0;
+				}
+			}
+		}
+		.btn {
+			font-size: 24px !important;
+			line-height: 40px;
+			text-align: center;
+		}
+	}
+}
+</style>

@@ -1,0 +1,213 @@
+<template>
+	<div class="page">
+		<div class="navbar flex-row" :style="navBarStyles" elevation="5">
+			<div class="flex-row" @tap="backFn">
+				<iconfont type="back" />
+				<text class="navbar-content">设置</text>
+			</div>
+		</div>
+		<list :show-scrollbar="false" class="list-wrapper">
+			<cell class="placeholder" />
+			<cell v-for="(options, INDEX) in themeList" :key="`theme${INDEX}`" class="cell-item flex-row">
+				<div
+					v-for="(item, index) in options"
+					:key="item.key"
+					ref="card"
+					elevation="3"
+					class="theme-item"
+					@tap="onTap('editPopup', INDEX * 2 + index, item)"
+					@longpress="showMoreActionFn(INDEX * 2 + index)"
+				>
+					<text class="cell-item-content">{{ item.label }}</text>
+					<div class="color-bar" :style="{ backgroundColor: item.value || item.defaultValue }" />
+					<more-action
+						:show="showActionIndex == INDEX * 2 + index"
+						left-text="重置"
+						right-text="取消"
+						@leftClick="resetTheme(item)"
+						@rightClick="showActionIndex = -1"
+					/>
+				</div>
+			</cell>
+			<cell v-for="(item, index) in customLevels" :key="`level${index}`" :data-index="index" ref="level" class="cell-item">
+				<div elevation="3" class="level-item" @tap="onTap('tipPopup', themeList.length * 2 + index)" @longpress="showMoreActionFn(themeList.length * 2 + index)">
+					<text class="level-item-title">自定义：{{ item.col }}*{{ item.row }}*{{ item.mine }}</text>
+					<div class="best-score flex-row">
+						<text class="cell-item-content">最佳纪录：{{ '00:41' }}</text>
+						<text class="cell-item-content">{{ '2021-04-01' }}</text>
+					</div>
+					<more-action
+						:show="showActionIndex == themeList.length * 2 + index"
+						left-text="删除"
+						right-text="取消"
+						@leftClick="deletedLevel(index)"
+						@rightClick="showActionIndex = -1"
+					/>
+				</div>
+			</cell>
+			<cell class="placeholder" />
+		</list>
+		<tip-popup ref="tipPopup" title="开始游戏or查看记录?" left-text="开始" right-text="记录" @leftClick="startGame" @rightClick="watchRecord" />
+		<edit-popup ref="editPopup" />
+	</div>
+</template>
+
+<script>
+import moreAction from './more-action'
+import editPopup from './edit-popup'
+
+export default {
+	components: {
+		moreAction,
+		editPopup
+	},
+
+	data() {
+		const { statusBarHeight } = uni.getSystemInfoSync()
+		const navBarStyles = {
+			height: statusBarHeight + 44,
+			paddingTop: statusBarHeight
+		}
+		return {
+			navBarStyles,
+			showActionIndex: -1,
+			customLevels: [
+				{
+					row: 40,
+					col: 10,
+					mine: 40
+				},
+				{
+					row: 50,
+					col: 10,
+					mine: 50
+				},
+				{
+					row: 60,
+					col: 10,
+					mine: 60
+				},
+				{
+					row: 60,
+					col: 10,
+					mine: 60
+				}
+			]
+		}
+	},
+
+	computed: {
+		themeList() {
+			const { theme } = this.$store.state
+			const keys = Object.keys(theme)
+			return new Array(Math.ceil(keys.length / 2)).fill().map((_, i) => keys.slice(i * 2, (i + 1) * 2).map(key => ({ key, ...theme[key] })))
+		}
+	},
+	
+	methods: {
+		backFn() {
+			uni.navigateBack()
+		},
+		onTap(refName, i, payload) {
+			if (this.showActionIndex == i) return
+			this.$refs[refName].show(true, payload)
+		},
+		showMoreActionFn(index) {
+			if (this.showActionIndex == index) return
+			this.showActionIndex = index
+			uni.vibrateShort()
+		},
+		resetTheme({ key }) {
+			this.$store.commit('saveTheme', { key })
+			this.showActionIndex = -1
+		},
+		deletedLevel(index) {
+			uni.showToast({
+				title: 'todo: 删除自定义难度',
+				icon: 'none'
+			})
+		},
+		startGame() {
+			uni.showToast({
+				title: 'todo: 开始游戏',
+				icon: 'none'
+			})
+		},
+		watchRecord() {
+			uni.showToast({
+				title: 'todo: 查看记录',
+				icon: 'none'
+			})
+		}
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.page {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+.navbar {
+	padding: 0 30rpx;
+	background-color: #fff;
+	.iconfont {
+		margin-right: 5px;
+	}
+	.navbar-content, .iconfont {
+		font-size: 18px;
+	}
+}
+.list-wrapper {
+	flex: 1;
+	.placeholder {
+		height: 15rpx;
+	}
+	.cell-item {
+		padding: 15rpx 30rpx;
+		justify-content: space-between;
+		.cell-item-content {
+			font-size: 16px;
+		}
+		.theme-item {
+			width: 330rpx;
+			height: 200rpx;
+			padding: 10px;
+			border-radius: 5px;
+			justify-content: space-between;
+			background-color: #fff;
+			transition: transform 0.3s;
+			transform: scale(1, 1);
+			&:active {
+				transform: scale(0.95, 0.95);
+			}
+			.color-bar {
+				height: 20px;
+				border-radius: 5px;
+				border: 1px solid #e0e0e0;
+			}
+		}
+		.level-item {
+			height: 200rpx;
+			padding: 10px;
+			border-radius: 5px;
+			background-color: #fff;
+			transition: transform 0.3s;
+			transform: scale(1, 1);
+			justify-content: space-around;
+			&:active {
+				transform: scale(0.95, 0.95);
+			}
+			.level-item-title {
+				font-size: 18px;
+			}
+			.best-score {
+				justify-content: space-between;
+			}
+		}
+	}
+}
+</style>

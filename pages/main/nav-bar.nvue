@@ -1,0 +1,84 @@
+<template>
+	<div class="navbar" elevation="15" :style="navbarStyles">
+		<view class="flex-row">
+			<iconfont type="flag" :style="navbarTextStyles" />
+			<text class="content" :style="navbarTextStyles">{{ remainNum }}</text>
+		</view>
+		<text class="content" :style="navbarTextStyles">{{ currTime | dateToTime }}</text>
+	</div>
+</template>
+
+<script>
+import { dateToTime } from '@/utils/tool'
+
+export default {
+	data() {
+		return {
+			currTime: 0
+		}
+	},
+	
+	computed: {
+		remainNum() {
+			const { options, flagNum } = this.$parent
+			return options.mine - flagNum
+		},
+		navbarStyles() {
+			const { statusBarHeight } = uni.getSystemInfoSync()
+			const { value, defaultValue } = this.$parent.theme.navBarBgColor
+			return {
+				height: statusBarHeight + 44,
+				paddingTop: statusBarHeight,
+				backgroundColor: value || defaultValue
+			}
+		},
+		navbarTextStyles() {
+			const { value, defaultValue } = this.$parent.theme.navbarColor
+			return { color: value || defaultValue }
+		},
+		// 剩余旗帜数
+		remainFlagNum() {
+			const { options, flagNum } = this.$parent
+			return options.mine - flagNum
+		}
+	},
+	
+	filters: { dateToTime },
+	
+	methods: {
+		endTimer() {
+			uni.$emit('clearTimer')
+			return this.currTime
+		}
+	},
+	
+	created() {
+		let timer = null
+		uni.$on('setTimer', () => {
+			this.currTime = 0
+			timer = setInterval(() => this.currTime++, 1000)
+		})
+		uni.$on('clearTimer', () => clearInterval(timer))
+	},
+	
+	beforeDestroy() {
+		uni.$off('setTimer')
+		uni.$off('clearTimer')
+	}
+}
+</script>
+
+<style lang="scss" scoped>
+.navbar {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0 30rpx;
+	.content, .iconfont {
+		font-size: 18px;
+	}
+	.iconfont {
+		margin-right: 5px;
+	}
+}
+</style>
