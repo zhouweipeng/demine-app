@@ -3,7 +3,7 @@
  * @param {Date_Object, timestamp_Number, Date_String} date* 时间
  * @param {String} fmt* 生成格式 ‘yyyy-MM-dd hh-mm-ss’
  */
-export const dateFormat = (date, fmt) => {
+export const dateFormat = (date, fmt = 'yyyy-MM-dd hh:mm:ss') => {
 	let ret
 	date = ['string', 'number'].includes(typeof date) ? new Date(date) : date
 	const opt = {

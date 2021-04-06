@@ -6,10 +6,10 @@
 				:key="index"
 				ref="level"
 				:class="['level-item', { 'level-item-init': index < 5 }]"
-				@tap="changeLevelFn(index + 1)"
+				@tap="changeLevelFn(item.level)"
 			>
-				<text class="content">level {{ index + 1 }}：{{ item.col }}*{{ item.row }}*{{ item.mine }}</text>
-				<iconfont v-if="item.row / 10 == currLevel" type="selected" class="content" />
+				<text class="content">level{{ item.level }}：{{ item.title }}</text>
+				<iconfont v-if="item.level == currLevel" type="selected" class="content" />
 			</cell>
 		</list>
 	</base-popup>
@@ -17,7 +17,6 @@
 
 <script>
 import animate from '@/mixins/animate'
-import { deepClone } from '@/utils/tool'
 const BindingX = uni.requireNativePlugin('bindingx')
 
 export default {
@@ -29,11 +28,13 @@ export default {
 
 	computed: {
 		levelList() {
-			return new Array(this.$store.state.level).fill().map((...[, i]) => ({
-				col: 10,
-				row: (i + 1) * 10,
-				mine: (i + 1) * 10
-			}))
+			const length = this.$store.state.record.length
+			return new Array(length).fill().map((...[, i]) => {
+				const level = length - i
+				const height = level * 10
+				const title = `10*${height}*${height}`
+				return { title, level }
+			})
 		}
 	},
 
@@ -75,9 +76,10 @@ export default {
 				this.bindingxToken = level_bindingx.token
 			})
 		},
-		changeLevelFn(options) {
+		changeLevelFn(level) {
 			this.$refs.popup.show(false)
-			uni.$emit('reset', deepClone(options))
+			uni.$emit('clearTimer')
+			uni.$emit('reset', level)
 		}
 	}
 }

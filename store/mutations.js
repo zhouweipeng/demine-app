@@ -10,11 +10,14 @@ export default {
 		uni.setStorageSync('localTheme', state.theme)
 	},
 	/**
-	 * 提升关卡等级
+	 * 更新记录
 	 */
-	updateLevel(state, num) {
-		state.level = num
-		uni.setStorageSync('level', num)
+	updateRecord({ record }, { id, duration }) {
+		const tryFindIndex = record.findIndex(item => item.id == id)
+		record[tryFindIndex].duration = duration
+		record[tryFindIndex].date = Date.now()
+		if (tryFindIndex == record.length - 1) record.push({ id: ++id, duration: 0 })
+		uni.setStorageSync('record', record)
 	},
 	/**
 	 * 将本地缓存的数据更新到store中
@@ -22,7 +25,7 @@ export default {
 	updateDataFromLocal(state) {
 		const localTheme = uni.getStorageSync('localTheme')
 		if (localTheme) state.theme = localTheme
-		const level = uni.getStorageSync('level')
-		if (level) state.level = level
+		const record = uni.getStorageSync('record')
+		if (record) state.record = record
 	}
 }

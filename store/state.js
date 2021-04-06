@@ -69,5 +69,8 @@ export default {
 			defaultValue: '#fd1a36'
 		}
 	},
-	level: 1
+	record: [{
+		id: 1,
+		duration: 0
+	}]
 }

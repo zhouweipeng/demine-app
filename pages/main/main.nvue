@@ -27,7 +27,7 @@
 		<!-- 二十关之后渲染速度变慢提示（五十关的时候慢的出奇 -->
 		<tip-popup
 			ref="tipPopup"
-			title="二十关之后游戏渲染速度会逐渐变慢,确定继续吗?"
+			title="由于方块数量较多,游戏渲染速度会逐渐变慢,确定继续吗?"
 			left-text="确定"
 			right-text="取消"
 			@leftClick="nextLevel(false)"
@@ -111,7 +111,7 @@ export default {
 		 * @param {Number} targetIndex 点击块下标
 		 */
 		onLongPress(targetIndex) {
-			if (this.isEnd) return
+			if (this.isEnd || this.gridList[targetIndex].mineNum !== undefined) return
 			uni.vibrateShort()
 			this.$set(this.gridList[targetIndex], 'isFlag', !this.gridList[targetIndex].isFlag)
 		},
@@ -172,6 +172,7 @@ export default {
 			if (level) {
 				const tempNum = level * 10
 				this.options = {
+					id: level,
 					col: 10,
 					row: tempNum,
 					mine: tempNum
@@ -199,12 +200,11 @@ export default {
 		 * @param {Boolean} isAsk
 		 */
 		nextLevel(isAsk) {
-			let { level } = this.$store.state
-			if (level >= 20 && isAsk) return this.$refs.tipPopup.show(true)
-			this.$store.commit('updateLevel', ++level)
+			let level = this.$store.state.record.length
+			if (level > 20 && isAsk) return this.$refs.tipPopup.show(true)
 			this.reset(level)
-			if (level >= 20) this.$refs.overPopup.show({ show: false })
 			if (!isAsk) this.$refs.tipPopup.show(false)
+			this.$refs.overPopup.show({ show: false })
 		}
 	},
 
@@ -224,7 +224,7 @@ export default {
 
 	onLoad() {
 		const { reset } = this
-		reset(this.$store.state.level)
+		reset(this.$store.state.record.length)
 		uni.$on('reset', reset)
 	},
 

@@ -40,12 +40,13 @@ export default {
 			return { color: value || defaultValue }
 		},
 		currLevel() {
-			return this.$parent.options.row / 10
+			return this.$parent.options.id
 		}
 	},
 
 	methods: {
 		reset() {
+			uni.$emit('clearTimer')
 			uni.$emit('reset')
 			this.$refs.tipPopup.show(false)
 		},

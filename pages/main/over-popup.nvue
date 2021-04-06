@@ -22,7 +22,7 @@ const BindingX = uni.requireNativePlugin('bindingx')
 
 export default {
 	mixins: [animate],
-	
+
 	data() {
 		return {
 			isWin: false,
@@ -36,9 +36,11 @@ export default {
 
 	methods: {
 		show({ show, result, time }) {
+			let isNewRecord = false
 			if (show) {
 				this.isWin = result
 				this.duration = time
+				if (result) isNewRecord = this.updataRecord(time)
 			}
 			this.$refs.popup.show(show)
 			if (!show) return
@@ -72,73 +74,52 @@ export default {
 									]
 								})
 								.flat(),
-							...(this.isWin ? [
-								{
-									element: this.$refs.time.ref,
-									property: 'transform.translateY',
-									expression: 'easeOutElastic(t-50,50,-50,950)'
-								},
-								{
-									element: this.$refs.time.ref,
-									property: 'opacity',
-									expression: 'easeOutExpo(t-50,0,1,950)'
-								},
-								{
-									element: this.$refs.tip.ref,
-									property: 'transform.scale',
-									expression: 'easeOutElastic(t-500,1,0.2,500)',
-									config: {
-										transformOrigin: 'right center'
+							...(this.isWin
+								? [
+										{
+											element: this.$refs.time.ref,
+											property: 'transform.translateY',
+											expression: 'easeOutElastic(t-50,50,-50,950)'
+										},
+										{
+											element: this.$refs.time.ref,
+											property: 'opacity',
+											expression: 'easeOutExpo(t-50,0,1,950)'
+										},
+										...(isNewRecord
+											? [
+													{
+														element: this.$refs.tip.ref,
+														property: 'transform.scale',
+														expression: 'easeOutElastic(t-500,1,0.2,500)',
+														config: {
+															transformOrigin: 'right center'
+														}
+													},
+													{
+														element: this.$refs.tip.ref,
+														property: 'opacity',
+														expression: 'easeOutExpo(t-500,0,1,500)'
+													}
+											  ]
+											: [])
+								  ]
+								: []),
+							...(this.isWin ? ['next'] : [])
+								.concat('restart', 'close')
+								.map((refName, i) => [
+									{
+										element: this.$refs[refName].ref,
+										property: 'transform.translateY',
+										expression: `easeOutElastic(t-100+${50 * i},50,-50,900-${50 * i})`
+									},
+									{
+										element: this.$refs[refName].ref,
+										property: 'opacity',
+										expression: `easeOutExpo(t-100+${50 * i},0,1,900-${50 * i})`
 									}
-								},
-								{
-									element: this.$refs.tip.ref,
-									property: 'opacity',
-									expression: 'easeOutExpo(t-500,0,1,500)'
-								}
-							] : []),
-							...(this.isWin ? ['next'] : []).concat('restart', 'close').map((refName, i) => [
-								{
-									element: this.$refs[refName].ref,
-									property: 'transform.translateY',
-									expression: `easeOutElastic(t-100+${50*i},50,-50,900-${50*i})`
-								},
-								{
-									element: this.$refs[refName].ref,
-									property: 'opacity',
-									expression: `easeOutExpo(t-100+${50*i},0,1,900-${50*i})`
-								}
-							]).flat()
-							// {
-							// 	element: this.$refs.next.ref,
-							// 	property: 'transform.translateY',
-							// 	expression: 'easeOutElastic(t-100,50,-50,900)'
-							// },
-							// {
-							// 	element: this.$refs.next.ref,
-							// 	property: 'opacity',
-							// 	expression: 'easeOutExpo(t-100,0,1,900)'
-							// },
-							// {
-							// 	element: this.$refs.restart.ref,
-							// 	property: 'transform.translateY',
-							// 	expression: 'easeOutElastic(t-150,50,-50,850)'
-							// },
-							// {
-							// 	element: this.$refs.restart.ref,
-							// 	property: 'opacity',
-							// 	expression: 'easeOutExpo(t-150,0,1,850)'
-							// },
-							// {
-							// 	element: this.$refs.close.ref,
-							// 	property: 'transform.translateY',
-							// 	expression: 'easeOutElastic(t-200,50,-50,800)'
-							// },
-							// {
-							// 	element: this.$refs.close.ref,
-							// 	property: 'opacity',
-							// 	expression: 'easeOutExpo(t-200,0,1,800)'
-							// }
+								])
+								.flat()
 						]
 					},
 					res => {
@@ -147,6 +128,21 @@ export default {
 				)
 				this.bindingxToken = over_bindingx.token
 			})
+		},
+		/**
+		 * 更新游戏记录并解锁下一关卡
+		 * @param {Number} newDuration
+		 */
+		updataRecord(newDuration) {
+			const currLevel = this.$parent.options.id
+			const { record } = this.$store.state
+			const { duration, date } = record.find(item => item.id == currLevel)
+			if (!!date && newDuration > duration) return false
+			this.$store.commit('updateRecord', {
+				id: currLevel,
+				duration: newDuration
+			})
+			return true
 		},
 		reStart() {
 			uni.$emit('reset')
@@ -178,6 +174,7 @@ export default {
 			font-size: 12px;
 			color: #fd1a36;
 			padding: 10px;
+			opacity: 0;
 		}
 	}
 	.btn {

@@ -1,19 +1,59 @@
 <template>
-	<div>
-		
-	</div>
+	<list-page title="记录">
+		<cell class="placeholder" />
+		<cell v-for="item in record" :key="item.id" class="cell-item">
+			<div class="flex-row" elevation="3">
+				<div>
+					<text class="level-title">level{{ item.id }}</text>
+					<text class="level-date">{{ item.date ? dateFormat(item.date) : '暂无通关记录' }}</text>
+				</div>
+				<text class="level-duration">{{ item.duration | dateToTime }}</text>
+			</div>
+		</cell>
+		<cell class="placeholder" />
+	</list-page>
 </template>
 
 <script>
+import { mapState } from 'vuex'
+import { dateFormat, dateToTime } from '@/utils/tool'
+
 export default {
-	data() {
-		return {}
+	computed: {
+		...mapState(['record'])
 	},
 
-	methods: {}
+	filters: { dateToTime },
+
+	methods: {
+		dateFormat
+	}
 }
 </script>
 
 <style lang="scss" scoped>
-
+.placeholder {
+	height: 15rpx;
+}
+.cell-item {
+	padding: 15rpx 30rpx;
+	> .flex-row {
+		padding: 10px;
+		border-radius: 5px;
+		background-color: #fff;
+		justify-content: space-between;
+		.level-title {
+			font-size: 16px;
+		}
+		.level-date {
+			font-size: 14px;
+			color: #999;
+			margin-top: 3px;
+		}
+		.level-duration {
+			font-size: 18px;
+			font-weight: bold;
+		}
+	}
+}
 </style>
